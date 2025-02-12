@@ -1,4 +1,5 @@
 import React, { useRef, useState, useCallback } from 'react';
+import './AudioStreamer.css';
 
 interface AudioStreamerProps {
   wsUrl: string;
@@ -7,6 +8,7 @@ interface AudioStreamerProps {
 
 const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
   const [isRecording, setIsRecording] = useState(false);
+  const [rtmpUrl, setRtmpUrl] = useState<string>('');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const websocketRef = useRef<WebSocket | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -40,8 +42,19 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
           }
         };
 
-        mediaRecorder.start(500);
+        mediaRecorder.start(500); // Send chunks every 500ms for lower latency
         setIsRecording(true);
+      };
+
+      websocketRef.current.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'stream-created' && data.rtmpUrl) {
+            setRtmpUrl(data.rtmpUrl);
+          }
+        } catch (error) {
+          console.error('Failed to parse WebSocket message:', error);
+        }
       };
 
       websocketRef.current.onerror = (error) => {
@@ -85,6 +98,27 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
           {isRecording ? 'Stop Streaming' : 'Start Streaming'}
         </button>
       </div>
+      {rtmpUrl && (
+        <div className="rtmp-url-container">
+          <p>RTMP URL:</p>
+          <div className="rtmp-url-box">
+            <input
+              type="text"
+              value={rtmpUrl}
+              readOnly
+              onClick={(e) => (e.target as HTMLInputElement).select()}
+            />
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(rtmpUrl);
+                alert('RTMP URL copied to clipboard!');
+              }}
+            >
+              Copy
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

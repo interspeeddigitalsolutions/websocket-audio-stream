@@ -23,9 +23,11 @@ wss.on('connection', (ws: WebSocket) => {
   try {
     streamMetadata = streamManager.createStream(clientId);
     
+    const rtmpUrl = `rtmp://${config.rtmpServer}:${config.rtmpPort}/live/${streamMetadata.id}`;
     ws.send(JSON.stringify({ 
       type: 'stream-created', 
-      streamId: streamMetadata.id 
+      streamId: streamMetadata.id,
+      rtmpUrl: rtmpUrl
     }));
 
   } catch (error) {
