@@ -7,6 +7,9 @@ function App() {
     console.error('Streaming error:', error);
   };
 
+  const websocketUrl = import.meta.env.VITE_WEB_SOCKET_URL;
+  console.log("websocketUrl: ", websocketUrl);
+
   return (
     <div className="app-container">
       <header className="app-header">
@@ -14,7 +17,7 @@ function App() {
       </header>
       <main className="app-main">
         <AudioStreamer 
-          wsUrl="ws://localhost:8083" 
+          wsUrl={websocketUrl || "ws://localhost:8083"} 
           onError={handleError}
         />
       </main>
