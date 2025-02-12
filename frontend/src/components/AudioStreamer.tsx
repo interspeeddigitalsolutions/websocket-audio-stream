@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import './AudioStreamer.css';
 
 interface AudioStreamerProps {
@@ -12,6 +12,50 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const websocketRef = useRef<WebSocket | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number>();
+
+  const drawVisualizer = useCallback(() => {
+    if (!canvasRef.current || !analyserRef.current) return;
+
+    const canvas = canvasRef.current;
+    const canvasCtx = canvas.getContext('2d');
+    if (!canvasCtx) return;
+
+    const analyser = analyserRef.current;
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    const draw = () => {
+      animationFrameRef.current = requestAnimationFrame(draw);
+      analyser.getByteFrequencyData(dataArray);
+
+      canvas.width = canvas.clientWidth * window.devicePixelRatio;
+      canvas.height = canvas.clientHeight * window.devicePixelRatio;
+      canvasCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      const barWidth = width / bufferLength * 2.5;
+      let x = 0;
+
+      canvasCtx.fillStyle = '#121212';
+      canvasCtx.fillRect(0, 0, width, height);
+
+      for (let i = 0; i < bufferLength; i++) {
+        const barHeight = (dataArray[i] / 255) * height;
+        const hue = (i / bufferLength) * 360;
+        
+        canvasCtx.fillStyle = `hsla(${hue}, 100%, 50%, 0.8)`;
+        canvasCtx.fillRect(x, height - barHeight, barWidth, barHeight);
+
+        x += barWidth + 1;
+      }
+    };
+
+    draw();
+  }, []);
 
   const startRecording = useCallback(async () => {
     try {
@@ -27,6 +71,14 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
       
       streamRef.current = stream;
       websocketRef.current = new WebSocket(wsUrl);
+
+      // Set up audio analyzer
+      const audioContext = new AudioContext();
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      analyserRef.current = analyser;
       
       websocketRef.current.onopen = () => {
         const mediaRecorder = new MediaRecorder(stream, {
@@ -42,8 +94,9 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
           }
         };
 
-        mediaRecorder.start(500); // Send chunks every 500ms for lower latency
+        mediaRecorder.start(500);
         setIsRecording(true);
+        drawVisualizer();
       };
 
       websocketRef.current.onmessage = (event) => {
@@ -64,11 +117,16 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
       };
 
     } catch (error) {
+      console.error('Failed to start recording:', error);
       onError?.(error instanceof Error ? error : new Error('Failed to start recording'));
     }
-  }, [wsUrl, onError]);
+  }, [wsUrl, onError, drawVisualizer]);
 
   const stopRecording = useCallback(() => {
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }
@@ -82,31 +140,37 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
     }
 
     setIsRecording(false);
+    setRtmpUrl(''); // Clear the RTMP URL when stopping
   }, []);
+
+  useEffect(() => {
+    return () => {
+      stopRecording();
+    };
+  }, [stopRecording]);
 
   return (
     <div className="audio-streamer">
-      <div className="mt-4 flex gap-4">
-        <button
-          onClick={isRecording ? stopRecording : startRecording}
-          className={`px-4 py-2 rounded-lg ${
-            isRecording 
-              ? 'bg-red-500 hover:bg-red-600' 
-              : 'bg-blue-500 hover:bg-blue-600'
-          } text-white`}
-        >
-          {isRecording ? 'Stop Streaming' : 'Start Streaming'}
-        </button>
+      <div className="visualizer-container">
+        <canvas ref={canvasRef} className="audio-visualizer" />
       </div>
-      {rtmpUrl && (
+
+      <button 
+        className={`stream-button ${isRecording ? 'recording' : ''}`}
+        onClick={isRecording ? stopRecording : startRecording}
+      >
+        {isRecording ? 'Stop Streaming' : 'Start Streaming'}
+      </button>
+
+      {isRecording && rtmpUrl && (
         <div className="rtmp-url-container">
-          <p>RTMP URL:</p>
           <div className="rtmp-url-box">
             <input
               type="text"
               value={rtmpUrl}
               readOnly
               onClick={(e) => (e.target as HTMLInputElement).select()}
+              placeholder="RTMP URL will appear here..."
             />
             <button
               onClick={() => {

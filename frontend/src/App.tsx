@@ -1,28 +1,25 @@
 import React from 'react';
-import VideoStreamer from './components/VideoStreamer';
 import AudioStreamer from './components/AudioStreamer';
+import './App.css';
 
-const App: React.FC = () => {
+function App() {
   const handleError = (error: Error) => {
     console.error('Streaming error:', error);
-    alert(`Streaming error: ${error.message}`);
   };
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Live Audio Streamer</h1>
-      {/* <VideoStreamer 
-        wsUrl="ws://localhost:8080" 
-        onError={handleError}
-      /> */}
-
-      {/* Audio Streamer */}
-      <AudioStreamer
-        wsUrl="ws://localhost:8080"
-        onError={handleError}
-      />
+    <div className="app-container">
+      <header className="app-header">
+        <h1>Live Audio Streamer</h1>
+      </header>
+      <main className="app-main">
+        <AudioStreamer 
+          wsUrl="ws://localhost:8080" 
+          onError={handleError}
+        />
+      </main>
     </div>
   );
-};
+}
 
 export default App;
