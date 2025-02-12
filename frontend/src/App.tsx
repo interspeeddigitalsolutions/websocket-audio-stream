@@ -14,7 +14,7 @@ function App() {
       </header>
       <main className="app-main">
         <AudioStreamer 
-          wsUrl="ws://localhost:8080" 
+          wsUrl="ws://localhost:8083" 
           onError={handleError}
         />
       </main>
