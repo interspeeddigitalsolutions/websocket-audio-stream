@@ -6,6 +6,7 @@ import express from 'express';
 import path from 'path';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import http from 'http';
 
 dotenv.config();
 
@@ -32,12 +33,18 @@ app.use(cors({
 app.use('/hls', express.static(path.join(__dirname, '..', 'hls')));
 
 // Start HTTP server
-app.listen(port, () => {
+// app.listen(port, () => {
+//   console.log(`HTTP server running on port ${port}`);
+// });
+const server = http.createServer(app); 
+server.listen(port, () => {
   console.log(`HTTP server running on port ${port}`);
-});
+})
 
 // WebSocket server
-const wss = new WebSocketServer({ port: config.port });
+// const wss = new WebSocketServer({ port: config.port });
+// WebSocket Server
+const wss = new WebSocket.Server({ server });
 
 wss.on('connection', (ws: WebSocket) => {
   const clientId = `client-${Date.now()}`;
