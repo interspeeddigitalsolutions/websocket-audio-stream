@@ -5,6 +5,13 @@ import { StreamMetadata } from './types';
 import express from 'express';
 import path from 'path';
 import cors from 'cors';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const frontendUrl = process.env.FRONTEND_URL;
+const backendUrl = process.env.BACKEND_URL;
+const port = process.env.PORT;
 
 let streamManager: StreamManager;
 
@@ -23,9 +30,8 @@ app.use(cors());
 app.use('/hls', express.static(path.join(__dirname, '..', 'hls')));
 
 // Start HTTP server
-const HTTP_PORT = 3001;
-app.listen(HTTP_PORT, () => {
-  console.log(`HTTP server running on port ${HTTP_PORT}`);
+app.listen(port, () => {
+  console.log(`HTTP server running on port ${port}`);
 });
 
 // WebSocket server
@@ -40,8 +46,8 @@ wss.on('connection', (ws: WebSocket) => {
   try {
     streamMetadata = streamManager.createStream(clientId);
     
-    const hlsUrl = `http://localhost:${HTTP_PORT}/hls/${streamMetadata.id}/audio.m3u8`;
-    const playerUrl = `http://localhost:5173/player/${streamMetadata.id}`;
+    const hlsUrl = `${backendUrl}/hls/${streamMetadata.id}/audio.m3u8`;
+    const playerUrl = `${frontendUrl}/player/${streamMetadata.id}`;
     ws.send(JSON.stringify({ 
       type: 'stream-created', 
       streamId: streamMetadata.id,
