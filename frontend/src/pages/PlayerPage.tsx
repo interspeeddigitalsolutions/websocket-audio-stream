@@ -5,7 +5,7 @@ import './PlayerPage.css';
 
 const PlayerPage: React.FC = () => {
   const { streamId } = useParams<{ streamId: string }>();
-  const hlsUrl = `http://localhost:3001/hls/${streamId}/audio.m3u8`;
+  const hlsUrl = `${import.meta.env.VITE_BACKEND_URL}/hls/${streamId}/audio.m3u8`;
 
   return (
     <div className="player-page">
