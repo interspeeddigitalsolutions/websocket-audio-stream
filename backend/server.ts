@@ -25,7 +25,7 @@ try {
 // Express server for serving HLS files
 const app = express();
 app.use(cors({
-  origin: frontendUrl,
+  origin: "*",
 }));
 
 // Serve HLS files
