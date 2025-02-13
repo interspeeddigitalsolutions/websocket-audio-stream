@@ -151,9 +151,9 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
   }, [stopRecording]);
 
   return (
-    <div className="audio-streamer">
-      <div className="visualizer-container">
-        <canvas ref={canvasRef} className="audio-visualizer" />
+    <div className="record-audio-streamer">
+      <div className="record-visualizer-container">
+        <canvas ref={canvasRef} className="record-audio-visualizer" />
       </div>
 
       <button 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import HLSPlayer from '../components/HLSPlayer';
+import './PlayerPage.css';
 
 const PlayerPage: React.FC = () => {
   const { streamId } = useParams<{ streamId: string }>();
@@ -8,9 +9,14 @@ const PlayerPage: React.FC = () => {
 
   return (
     <div className="player-page">
-      <h2>Stream Player</h2>
-      <p>Stream ID: {streamId}</p>
-      <HLSPlayer src={hlsUrl} />
+      <div className="player-container">
+        {streamId && (
+          <HLSPlayer
+            src={hlsUrl}
+            streamId={streamId}
+          />
+        )}
+      </div>
     </div>
   );
 };
