@@ -8,7 +8,7 @@ interface AudioStreamerProps {
 
 const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
   const [isRecording, setIsRecording] = useState(false);
-  const [rtmpUrl, setRtmpUrl] = useState<string>('');
+  const [playerUrl, setPlayerUrl] = useState<string>('');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const websocketRef = useRef<WebSocket | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -102,8 +102,8 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
       websocketRef.current.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data.type === 'stream-created' && data.rtmpUrl) {
-            setRtmpUrl(data.rtmpUrl);
+          if (data.type === 'stream-created' && data.playerUrl) {
+            setPlayerUrl(data.playerUrl);
           }
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error);
@@ -140,7 +140,8 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
     }
 
     setIsRecording(false);
-    setRtmpUrl(''); // Clear the RTMP URL when stopping
+    // setRtmpUrl(''); // Clear the RTMP URL when stopping
+    setPlayerUrl('');
   }, []);
 
   useEffect(() => {
@@ -162,25 +163,29 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
         {isRecording ? 'Stop Streaming' : 'Start Streaming'}
       </button>
 
-      {isRecording && rtmpUrl && (
-        <div className="rtmp-url-container">
-          <div className="rtmp-url-box">
+      {isRecording && playerUrl && (
+        <div className="stream-info">
+          <p>Share this link to let others listen to your stream:</p>
+          <div className="player-url-box">
             <input
               type="text"
-              value={rtmpUrl}
+              value={playerUrl}
               readOnly
               onClick={(e) => (e.target as HTMLInputElement).select()}
-              placeholder="RTMP URL will appear here..."
+              placeholder="Player URL will appear here..."
             />
             <button
               onClick={() => {
-                navigator.clipboard.writeText(rtmpUrl);
-                alert('RTMP URL copied to clipboard!');
+                navigator.clipboard.writeText(playerUrl);
+                alert('Player URL copied to clipboard!');
               }}
             >
               Copy
             </button>
           </div>
+          <a href={playerUrl} target="_blank" rel="noopener noreferrer">
+            Open in new tab
+          </a>
         </div>
       )}
     </div>

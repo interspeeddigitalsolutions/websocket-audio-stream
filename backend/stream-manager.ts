@@ -1,6 +1,8 @@
 import { ChildProcess, spawn } from 'child_process';
 import { StreamMetadata } from './types';
 import { config } from './config';
+import * as path from 'path';
+import * as fs from 'fs';
 
 export class StreamManager {
   private activeStreams: Map<string, { 
@@ -20,20 +22,26 @@ export class StreamManager {
       clientId
     };
 
-    // Updated FFmpeg command with error handling
+    const HLS_FOLDER = path.join(__dirname, "..", "hls");
+    if (!fs.existsSync(HLS_FOLDER)) fs.mkdirSync(HLS_FOLDER);
+
+    // Create streams directory if it doesn't exist
+    const streamPath = `${HLS_FOLDER}/${streamId}`;
+    spawn('mkdir', ['-p', streamPath]);
     const ffmpegProcess = spawn('ffmpeg', [
+      '-re',                          
       '-re',                          // Read input at native frame rate
       '-fflags', '+igndts',           
-      '-i', '-',                      
+      '-i', '-',                      // Read input from stdin
       '-c:a', 'aac',                  
       '-ar', '48000',                 
       '-ac', '1',                     
       '-b:a', '128k',
-      '-rtmp_buffer', '8192',         // Increase RTMP buffer
-      '-rtmp_live', 'live',           // Specify RTMP live mode
-      '-f', 'flv',                    
-      // Use full server URL instead of localhost
-      `rtmp://${config.rtmpServer}/live/${streamId}`
+      '-f', 'hls',                    // HLS output format
+      '-hls_time', '1',               // Duration of each segment
+      '-hls_list_size', '2',          // Number of segments to keep in playlist
+      '-hls_flags', 'delete_segments+append_list',  // Auto-delete old segments
+      `${streamPath}/audio.m3u8`      // Output HLS playlist
     ]);
 
     // Improved error logging

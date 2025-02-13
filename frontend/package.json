@@ -12,8 +12,10 @@
   },
   "dependencies": {
     "@types/ws": "^8.5.14",
+    "hls.js": "^1.5.20",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-router-dom": "^7.1.5",
     "ws": "^8.18.0"
   },
   "devDependencies": {

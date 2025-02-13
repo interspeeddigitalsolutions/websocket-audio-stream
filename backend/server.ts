@@ -2,6 +2,9 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { StreamManager } from './stream-manager';
 import { config } from './config';
 import { StreamMetadata } from './types';
+import express from 'express';
+import path from 'path';
+import cors from 'cors';
 
 let streamManager: StreamManager;
 
@@ -12,6 +15,20 @@ try {
   process.exit(1);
 }
 
+// Express server for serving HLS files
+const app = express();
+app.use(cors());
+
+// Serve HLS files
+app.use('/hls', express.static(path.join(__dirname, '..', 'hls')));
+
+// Start HTTP server
+const HTTP_PORT = 3001;
+app.listen(HTTP_PORT, () => {
+  console.log(`HTTP server running on port ${HTTP_PORT}`);
+});
+
+// WebSocket server
 const wss = new WebSocketServer({ port: config.port });
 
 wss.on('connection', (ws: WebSocket) => {
@@ -23,11 +40,13 @@ wss.on('connection', (ws: WebSocket) => {
   try {
     streamMetadata = streamManager.createStream(clientId);
     
-    const rtmpUrl = `rtmp://${config.rtmpServer}:${config.rtmpPort}/live/${streamMetadata.id}`;
+    const hlsUrl = `http://localhost:${HTTP_PORT}/hls/${streamMetadata.id}/audio.m3u8`;
+    const playerUrl = `http://localhost:5173/player/${streamMetadata.id}`;
     ws.send(JSON.stringify({ 
       type: 'stream-created', 
       streamId: streamMetadata.id,
-      rtmpUrl: rtmpUrl
+      hlsUrl,
+      playerUrl
     }));
 
   } catch (error) {

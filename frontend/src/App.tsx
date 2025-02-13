@@ -1,5 +1,7 @@
 import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import AudioStreamer from './components/AudioStreamer';
+import PlayerPage from './pages/PlayerPage';
 import './App.css';
 
 function App() {
@@ -11,17 +13,24 @@ function App() {
   console.log("websocketUrl: ", websocketUrl);
 
   return (
-    <div className="app-container">
-      <header className="app-header">
-        <h1>Live Audio Streamer</h1>
-      </header>
-      <main className="app-main">
-        <AudioStreamer 
-          wsUrl={websocketUrl || "ws://localhost:8083"} 
-          onError={handleError}
-        />
-      </main>
-    </div>
+    <Router>
+      <div className="app-container">
+        <header className="app-header">
+          <h1>Live Audio Streamer</h1>
+        </header>
+        <main className="app-main">
+          <Routes>
+            <Route path="/" element={
+              <AudioStreamer 
+                wsUrl={websocketUrl || "ws://localhost:8083"} 
+                onError={handleError}
+              />
+            } />
+            <Route path="/player/:streamId" element={<PlayerPage />} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
   );
 }
 
