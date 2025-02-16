@@ -27,7 +27,7 @@ export class StreamManager {
 
     // Create streams directory if it doesn't exist
     const streamPath = `${HLS_FOLDER}/${streamId}`;
-    spawn('mkdir', ['-p', streamPath]);
+    fs.mkdirSync(streamPath, { recursive: true });
     const ffmpegProcess = spawn('ffmpeg', [
       '-re',                          
       '-re',                          // Read input at native frame rate

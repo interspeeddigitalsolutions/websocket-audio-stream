@@ -9,12 +9,14 @@ interface AudioStreamerProps {
 const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [playerUrl, setPlayerUrl] = useState<string>('');
+  const [copyButtonText, setCopyButtonText] = useState('Copy');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const websocketRef = useRef<WebSocket | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number>();
+  const urlInputRef = useRef<HTMLInputElement>(null);
 
   const drawVisualizer = useCallback(() => {
     if (!canvasRef.current || !analyserRef.current) return;
@@ -168,6 +170,7 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
           <p>Share this link to let others listen to your stream:</p>
           <div className="player-url-box">
             <input
+              ref={urlInputRef}
               type="text"
               value={playerUrl}
               readOnly
@@ -175,12 +178,29 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
               placeholder="Player URL will appear here..."
             />
             <button
-              onClick={() => {
-                navigator.clipboard.writeText(playerUrl);
-                alert('Player URL copied to clipboard!');
+              onClick={async () => {
+                if (urlInputRef.current) {
+                  urlInputRef.current.select();
+                  urlInputRef.current.setSelectionRange(0, 99999);
+                  
+                  // Try the modern approach first
+                  await navigator.clipboard.writeText(playerUrl).catch(() => {
+                    // Fallback for iOS Safari
+                    try {
+                      document.execCommand('copy');
+                    } catch (err) {
+                      console.error('Copy failed:', err);
+                    }
+                  });
+                  
+                  setCopyButtonText('Copied');
+                  setTimeout(() => {
+                    setCopyButtonText('Copy');
+                  }, 3000);
+                }
               }}
             >
-              Copy
+              {copyButtonText}
             </button>
           </div>
           <a href={playerUrl} target="_blank" rel="noopener noreferrer">
