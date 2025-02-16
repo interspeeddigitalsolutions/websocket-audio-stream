@@ -3,9 +3,12 @@ import { StreamMetadata } from './types';
 import { config } from './config';
 import * as path from 'path';
 import * as fs from 'fs';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 export class StreamManager {
-  private activeStreams: Map<string, { 
+  private activeStreams: Map<string, {
     process: ChildProcess;
     metadata: StreamMetadata;
   }>;
@@ -16,41 +19,68 @@ export class StreamManager {
 
   createStream(clientId: string): StreamMetadata {
     const streamId = `stream-${Date.now()}`;
+    const HLS_FOLDER = path.join(__dirname, "..", "hls");
+    const RECORDINGS_FOLDER = path.join(__dirname, "..", "recordings");
+
+    // Ensure both directories exist
+    [HLS_FOLDER, RECORDINGS_FOLDER].forEach(folder => {
+      if (!fs.existsSync(folder)) fs.mkdirSync(folder);
+    });
+
+    const streamPath = `${HLS_FOLDER}/${streamId}`;
+    const recordingPath = `${RECORDINGS_FOLDER}/${streamId}.wav`;
+    fs.mkdirSync(streamPath, { recursive: true });
+
     const metadata: StreamMetadata = {
       id: streamId,
       startTime: new Date(),
-      clientId
+      clientId,
+      hlsPath: `${streamPath}/audio.m3u8`,
+      recordingPath
     };
 
-    const HLS_FOLDER = path.join(__dirname, "..", "hls");
-    if (!fs.existsSync(HLS_FOLDER)) fs.mkdirSync(HLS_FOLDER);
+    const serverSideRecording = process.env.SERVER_SIDE_RECORDING;
 
-    // Create streams directory if it doesn't exist
-    const streamPath = `${HLS_FOLDER}/${streamId}`;
-    fs.mkdirSync(streamPath, { recursive: true });
-    const ffmpegProcess = spawn('ffmpeg', [
-      '-re',                          
+    let ffmpegCommand = [
       '-re',                          // Read input at native frame rate
-      '-fflags', '+igndts',           
+      '-fflags', '+igndts',
       '-i', '-',                      // Read input from stdin
-      '-c:a', 'aac',                  
-      '-ar', '48000',                 
-      '-ac', '1',                     
+      // First output: HLS stream
+      '-map', '0:a',                  // Map audio stream
+      '-c:a', 'aac',
+      '-ar', '48000',
+      '-ac', '1',
       '-b:a', '128k',
-      '-f', 'hls',                    // HLS output format
-      '-hls_time', '1',               // Duration of each segment
-      '-hls_list_size', '2',          // Number of segments to keep in playlist
-      '-hls_flags', 'delete_segments+append_list',  // Auto-delete old segments
-      `${streamPath}/audio.m3u8`      // Output HLS playlist
-    ]);
+      '-f', 'hls',
+      '-hls_time', '1',
+      '-hls_list_size', '2',
+      '-hls_flags', 'delete_segments+append_list',
+      `${streamPath}/audio.m3u8`
+    ]
+
+    if (serverSideRecording === 'true') {
+      ffmpegCommand.push(
+        // Second output: WAV recording
+        '-map', '0:a',                  // Map audio stream again
+        '-c:a', 'pcm_s16le',            // PCM format (uncompressed)
+        '-ar', '44100',                 // Standard CD quality
+        '-ac', '2',                     // Stereo
+        '-f', 'wav',                    // WAV format
+        recordingPath                   // Output WAV file
+      );
+    }
+
+    const ffmpegProcess = spawn('ffmpeg', ffmpegCommand);
 
     // Improved error logging
     ffmpegProcess.stderr.on('data', (data: Buffer) => {
       const message = data.toString();
       console.log(`FFmpeg [${streamId}]:`, message);
-      
+
       // Check for critical errors
-      if (message.includes('Connection refused') || message.includes('Failed to connect')) {
+      if (message.includes('Connection refused') ||
+        message.includes('Failed to connect') ||
+        message.includes('Invalid data')) {
         console.error(`Critical streaming error for ${streamId}:`, message);
         this.removeStream(streamId);
       }
