@@ -17,7 +17,7 @@ export class StreamManager {
     this.activeStreams = new Map();
   }
 
-  createStream(clientId: string): StreamMetadata {
+  createStream(clientId: string, shouldRecord: boolean = false): StreamMetadata {
     const streamId = `stream-${Date.now()}`;
     const HLS_FOLDER = path.join(__dirname, "..", "hls");
     const RECORDINGS_FOLDER = path.join(__dirname, "..", "recordings");
@@ -28,7 +28,7 @@ export class StreamManager {
     });
 
     const streamPath = `${HLS_FOLDER}/${streamId}`;
-    const recordingPath = `${RECORDINGS_FOLDER}/${streamId}.wav`;
+    const recordingPath = `${RECORDINGS_FOLDER}/${streamId}.webm`;
     fs.mkdirSync(streamPath, { recursive: true });
 
     const metadata: StreamMetadata = {
@@ -39,7 +39,7 @@ export class StreamManager {
       recordingPath
     };
 
-    const serverSideRecording = process.env.SERVER_SIDE_RECORDING;
+    // Recording is now controlled by the client preference
 
     let ffmpegCommand = [
       '-re',                          // Read input at native frame rate
@@ -58,15 +58,16 @@ export class StreamManager {
       `${streamPath}/audio.m3u8`
     ]
 
-    if (serverSideRecording === 'true') {
+    if (shouldRecord) {
       ffmpegCommand.push(
-        // Second output: WAV recording
+        // Second output: WebM recording
         '-map', '0:a',                  // Map audio stream again
-        '-c:a', 'pcm_s16le',            // PCM format (uncompressed)
-        '-ar', '44100',                 // Standard CD quality
-        '-ac', '2',                     // Stereo
-        '-f', 'wav',                    // WAV format
-        recordingPath                   // Output WAV file
+        '-c:a', 'libopus',             // Opus codec (excellent for audio)
+        '-ar', '48000',                // High quality sample rate
+        '-ac', '2',                    // Stereo
+        '-b:a', '128k',                // Bitrate for good quality
+        '-f', 'webm',                  // WebM container format
+        recordingPath                  // Output WebM file
       );
     }
 

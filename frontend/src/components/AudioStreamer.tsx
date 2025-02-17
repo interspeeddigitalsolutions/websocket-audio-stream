@@ -7,9 +7,14 @@ interface AudioStreamerProps {
 }
 
 const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
-  const [isRecording, setIsRecording] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [shouldRecord, setShouldRecord] = useState(false);
   const [playerUrl, setPlayerUrl] = useState<string>('');
-  const [copyButtonText, setCopyButtonText] = useState('Copy');
+  const [recordingPlayerUrl, setRecordingPlayerUrl] = useState<string>('');
+  const recordingInputRef = useRef<HTMLInputElement>(null);
+  const [hlsCopyButtonText, setHlsCopyButtonText] = useState('Copy');
+  const [recordingCopyButtonText, setRecordingCopyButtonText] = useState('Copy');
+  const [recordingStopped, setRecordingStopped] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const websocketRef = useRef<WebSocket | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -48,7 +53,7 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
       for (let i = 0; i < bufferLength; i++) {
         const barHeight = (dataArray[i] / 255) * height;
         const hue = (i / bufferLength) * 360;
-        
+
         canvasCtx.fillStyle = `hsla(${hue}, 100%, 50%, 0.8)`;
         canvasCtx.fillRect(x, height - barHeight, barWidth, barHeight);
 
@@ -61,16 +66,20 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
 
   const startRecording = useCallback(async () => {
     try {
+      setRecordingPlayerUrl('');
+      setRecordingStopped(false);
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
           sampleRate: 48000,
-          channelCount: 1
+          channelCount: 1,          // Mono recording (can help reduce noise)
+          noiseSuppression: true,   // Enable noise suppression
+          echoCancellation: true,   // Also enable echo cancellation
+          autoGainControl: true,    // Automatically adjust input volume
+          sampleSize: 16            // Bits per sample
         },
         video: false
       });
-      
+
       streamRef.current = stream;
       websocketRef.current = new WebSocket(wsUrl);
 
@@ -81,8 +90,15 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
       analyser.fftSize = 256;
       source.connect(analyser);
       analyserRef.current = analyser;
-      
+
       websocketRef.current.onopen = () => {
+        console.log(shouldRecord)
+        // Send recording preference
+        websocketRef.current?.send(JSON.stringify({
+          type: 'recording-preference',
+          shouldRecord
+        }));
+
         const mediaRecorder = new MediaRecorder(stream, {
           mimeType: 'audio/webm;codecs=opus',
           audioBitsPerSecond: 128000
@@ -97,7 +113,7 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
         };
 
         mediaRecorder.start(500);
-        setIsRecording(true);
+        setIsStreaming(true);
         drawVisualizer();
       };
 
@@ -106,6 +122,9 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
           const data = JSON.parse(event.data);
           if (data.type === 'stream-created' && data.playerUrl) {
             setPlayerUrl(data.playerUrl);
+            if (data.recordingPlayerUrl) {
+              setRecordingPlayerUrl(data.recordingPlayerUrl);
+            }
           }
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error);
@@ -122,9 +141,10 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
       console.error('Failed to start recording:', error);
       onError?.(error instanceof Error ? error : new Error('Failed to start recording'));
     }
-  }, [wsUrl, onError, drawVisualizer]);
+  }, [wsUrl, onError, drawVisualizer, shouldRecord]);
 
   const stopRecording = useCallback(() => {
+    setRecordingStopped(true);
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
@@ -141,7 +161,7 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
       streamRef.current.getTracks().forEach(track => track.stop());
     }
 
-    setIsRecording(false);
+    setIsStreaming(false);
     // setRtmpUrl(''); // Clear the RTMP URL when stopping
     setPlayerUrl('');
   }, []);
@@ -158,56 +178,103 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
         <canvas ref={canvasRef} className="record-audio-visualizer" />
       </div>
 
-      <button 
-        className={`stream-button ${isRecording ? 'recording' : ''}`}
-        onClick={isRecording ? stopRecording : startRecording}
-      >
-        {isRecording ? 'Stop Streaming' : 'Start Streaming'}
-      </button>
+      <div className="stream-controls">
+        <label className="record-toggle">
+          <input
+            type="checkbox"
+            checked={shouldRecord}
+            onChange={(e) => {
+              setShouldRecord(e.target.checked)
+            }}
+            disabled={isStreaming}
+          />
+          Record Stream
+        </label>
 
-      {isRecording && playerUrl && (
-        <div className="stream-info">
-          <p>Share this link to let others listen to your stream:</p>
-          <div className="player-url-box">
-            <input
-              ref={urlInputRef}
-              type="text"
-              value={playerUrl}
-              readOnly
-              onClick={(e) => (e.target as HTMLInputElement).select()}
-              placeholder="Player URL will appear here..."
-            />
-            <button
-              onClick={async () => {
-                if (urlInputRef.current) {
-                  urlInputRef.current.select();
-                  urlInputRef.current.setSelectionRange(0, 99999);
-                  
-                  // Try the modern approach first
-                  await navigator.clipboard.writeText(playerUrl).catch(() => {
-                    // Fallback for iOS Safari
-                    try {
-                      document.execCommand('copy');
-                    } catch (err) {
-                      console.error('Copy failed:', err);
-                    }
-                  });
-                  
-                  setCopyButtonText('Copied');
-                  setTimeout(() => {
-                    setCopyButtonText('Copy');
-                  }, 3000);
-                }
-              }}
-            >
-              {copyButtonText}
-            </button>
-          </div>
-          <a href={playerUrl} target="_blank" rel="noopener noreferrer">
-            Open in new tab
-          </a>
-        </div>
-      )}
+        <button
+          className={`stream-button ${isStreaming ? 'recording' : ''}`}
+          onClick={isStreaming ? stopRecording : startRecording}
+        >
+          {isStreaming ? 'Stop Streaming' : 'Start Streaming'}
+        </button>
+      </div>
+
+
+      {
+        isStreaming || recordingPlayerUrl
+          ? (
+            <>
+              <div className="stream-info">
+                <div className="stream-urls">
+                  {playerUrl && (
+                    <div className="url-box">
+                      <label>Live Stream Player:</label>
+                      <div className="player-url-box">
+                        <input
+                          ref={urlInputRef}
+                          type="text"
+                          value={playerUrl}
+                          readOnly
+                          onClick={(e) => (e.target as HTMLInputElement).select()}
+                          placeholder="Live stream player URL will appear here..."
+                        />
+                        <button
+                          onClick={async () => {
+                            if (urlInputRef.current) {
+                              urlInputRef.current.select();
+                              urlInputRef.current.setSelectionRange(0, 99999);
+                              await navigator.clipboard.writeText(playerUrl);
+                              setHlsCopyButtonText('Copied!');
+                              setTimeout(() => setHlsCopyButtonText('Copy'), 2000);
+                            }
+                          }}
+                        >
+                          {hlsCopyButtonText}
+                        </button>
+                      </div>
+                      <a href={playerUrl} target="_blank" rel="noopener noreferrer" className="open-link">
+                        Open live stream player
+                      </a>
+                    </div>
+                  )}
+
+                  {recordingPlayerUrl && recordingStopped ? (
+                    <div className="url-box">
+                      <label>Record Player:</label>
+                      <div className="player-url-box">
+                        <input
+                          ref={recordingInputRef}
+                          type="text"
+                          value={recordingPlayerUrl}
+                          readOnly
+                          onClick={(e) => (e.target as HTMLInputElement).select()}
+                          placeholder="Recording player URL will appear here..."
+                        />
+                        <button
+                          onClick={async () => {
+                            if (recordingInputRef.current) {
+                              recordingInputRef.current.select();
+                              recordingInputRef.current.setSelectionRange(0, 99999);
+                              await navigator.clipboard.writeText(recordingPlayerUrl);
+                              setRecordingCopyButtonText('Copied!');
+                              setTimeout(() => setRecordingCopyButtonText('Copy'), 2000);
+                            }
+                          }}
+                        >
+                          {recordingCopyButtonText}
+                        </button>
+                      </div>
+                      <a href={recordingPlayerUrl} target="_blank" rel="noopener noreferrer" className="open-link">
+                        Open record player
+                      </a>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </>
+          ) : null
+      }
+
     </div>
   );
 };

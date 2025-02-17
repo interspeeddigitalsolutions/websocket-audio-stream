@@ -9,6 +9,7 @@ interface HLSPlayerProps {
 }
 
 const HLSPlayer: React.FC<HLSPlayerProps> = ({ src, streamId }) => {
+
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(1);
