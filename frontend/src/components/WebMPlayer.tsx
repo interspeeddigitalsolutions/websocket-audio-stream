@@ -108,14 +108,14 @@ const WebMPlayer: React.FC<WebMPlayerProps> = ({ src, streamId }) => {
       </div>
 
       <div className="player-controls">
-        {/* <audio 
+        <audio 
           ref={audioRef} 
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
           onTimeUpdate={handleTimeUpdate}
-          onLoadedMetadata={handleTimeUpdate}
+          // onLoadedMetadata={handleTimeUpdate}
           onError={(e) => console.error('Audio error:', (e.target as HTMLAudioElement).error)}
-        /> */}
+        />
         
         <button 
           className={`start-stream-button ${isPlaying ? 'playing' : ''}`} 
