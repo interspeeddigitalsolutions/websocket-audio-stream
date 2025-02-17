@@ -1,5 +1,6 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import './AudioStreamer.css';
+import podcastImage from '../assets/podcast.png';
 
 interface AudioStreamerProps {
   wsUrl: string;
@@ -174,9 +175,13 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
 
   return (
     <div className="record-audio-streamer">
-      <div className="record-visualizer-container">
+      <div className="record-visualizer-container" style={{ display: isStreaming ? 'flex' : 'none' }}>
         <canvas ref={canvasRef} className="record-audio-visualizer" />
       </div>
+      <div className='center' style={{ display: isStreaming ? 'none' : 'flex' }}>
+        <img src={podcastImage} alt="Podcast" className="podcast-image" />
+      </div>
+
 
       <div className="stream-controls">
         <label className="record-toggle">
@@ -248,7 +253,7 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
                           value={recordingPlayerUrl}
                           readOnly
                           onClick={(e) => (e.target as HTMLInputElement).select()}
-                          placeholder="Recording player URL will appear here..."
+                          placeholder="Record player URL will appear here..."
                         />
                         <button
                           onClick={async () => {
