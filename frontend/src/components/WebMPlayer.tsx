@@ -156,7 +156,7 @@ const WebMPlayer: React.FC<WebMPlayerProps> = ({ src, streamId }) => {
         <h2 className="title">Recording</h2>
         <p className="stream-id">{streamId}</p>
         {/* show the src in hyperlink */}
-        <p className="src">Source: <a href={src} target="_blank" rel="noopener noreferrer">{src}</a></p>
+        <p className="src"><a href={src} target="_blank" rel="noopener noreferrer">Open in new tab</a></p>
       </div>
 
       <div className="player-controls">
