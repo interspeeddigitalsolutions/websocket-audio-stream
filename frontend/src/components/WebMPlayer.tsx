@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import './HLSPlayer.css';  // We'll reuse the HLS player styles
 import SmoothDotVisualizer from './SmoothDotVisualizer';
-import { useNavigate } from 'react-router-dom';
 
 interface WebMPlayerProps {
   src: string;
@@ -15,7 +14,6 @@ const WebMPlayer: React.FC<WebMPlayerProps> = ({ src, streamId }) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isPlayerSupported, setIsPlayerSupported] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (!src || !audioRef.current) return;
@@ -36,7 +34,6 @@ const WebMPlayer: React.FC<WebMPlayerProps> = ({ src, streamId }) => {
         if (audioRef.current) audioRef.current.src = '';
 
         try {
-          // setIsPlayerSupported(true);
           // Fall back to MediaSource approach
           const mediaSource = new MediaSource();
           audioRef.current!.src = URL.createObjectURL(mediaSource);
@@ -84,6 +81,8 @@ const WebMPlayer: React.FC<WebMPlayerProps> = ({ src, streamId }) => {
               }
             });
           });
+
+          setIsPlayerSupported(true);
         } catch (msError) {
           setIsPlayerSupported(false);
           console.error('MediaSource approach failed:', msError);
