@@ -12,8 +12,11 @@ const PlayerRouter: React.FC<PlayerRouterProps> = ({ streamId, hlsUrl, recording
   const searchParams = new URLSearchParams(window.location.search);
   const isRecording = searchParams.get('type') === 'recording';
 
+  alert(isRecording);
+
   if (isRecording && recordingUrl) {
-    return <WebMPlayer src={recordingUrl} streamId={streamId} />;
+    // return <WebMPlayer src={recordingUrl} streamId={streamId} />;
+    return <HLSPlayer src={recordingUrl} streamId={streamId} />;
   }
 
   return <HLSPlayer src={hlsUrl} streamId={streamId} />;
