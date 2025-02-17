@@ -69,13 +69,24 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
     try {
       setRecordingPlayerUrl('');
       setRecordingStopped(false);
+      // Initialize audio context first for Safari
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({
+        sampleRate: 48000,
+        latencyHint: 'interactive'
+      });
+      
+      // Safari requires the audio context to be resumed after user gesture
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           sampleRate: 48000,
           channelCount: 1,          // Mono recording (can help reduce noise)
           noiseSuppression: true,   // Enable noise suppression
           echoCancellation: true,   // Also enable echo cancellation
-          autoGainControl: true,    // Automatically adjust input volume
+          // autoGainControl: true,    // Automatically adjust input volume
           sampleSize: 16            // Bits per sample
         },
         video: false
@@ -85,7 +96,6 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
       websocketRef.current = new WebSocket(wsUrl);
 
       // Set up audio analyzer
-      const audioContext = new AudioContext();
       const source = audioContext.createMediaStreamSource(stream);
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 256;
