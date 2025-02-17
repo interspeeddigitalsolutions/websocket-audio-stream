@@ -112,7 +112,7 @@ const WebMPlayer: React.FC<WebMPlayerProps> = ({ src, streamId }) => {
           ref={audioRef} 
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
-          onTimeUpdate={handleTimeUpdate}
+          // onTimeUpdate={handleTimeUpdate}
           // onLoadedMetadata={handleTimeUpdate}
           onError={(e) => console.error('Audio error:', (e.target as HTMLAudioElement).error)}
         />
