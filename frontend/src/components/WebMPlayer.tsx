@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import './HLSPlayer.css';  // We'll reuse the HLS player styles
 import SmoothDotVisualizer from './SmoothDotVisualizer';
+import { useNavigate } from 'react-router-dom';
 
 interface WebMPlayerProps {
   src: string;
@@ -13,6 +14,8 @@ const WebMPlayer: React.FC<WebMPlayerProps> = ({ src, streamId }) => {
   const [volume, setVolume] = useState(1);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isPlayerSupported, setIsPlayerSupported] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!src || !audioRef.current) return;
@@ -33,6 +36,7 @@ const WebMPlayer: React.FC<WebMPlayerProps> = ({ src, streamId }) => {
         if (audioRef.current) audioRef.current.src = '';
 
         try {
+          // setIsPlayerSupported(true);
           // Fall back to MediaSource approach
           const mediaSource = new MediaSource();
           audioRef.current!.src = URL.createObjectURL(mediaSource);
@@ -81,9 +85,10 @@ const WebMPlayer: React.FC<WebMPlayerProps> = ({ src, streamId }) => {
             });
           });
         } catch (msError) {
+          setIsPlayerSupported(false);
           console.error('MediaSource approach failed:', msError);
           // If both approaches fail, show a user-friendly error
-          alert('This audio format is not supported in your browser. Please try using a different browser.');
+          // alert('This audio format is not supported in your browser. Please try using a different browser.');
         }
       }
     };
@@ -151,6 +156,8 @@ const WebMPlayer: React.FC<WebMPlayerProps> = ({ src, streamId }) => {
       <div className="player-info">
         <h2 className="title">Recording</h2>
         <p className="stream-id">{streamId}</p>
+        {/* show the src in hyperlink */}
+        <p className="src">Source: <a href={src} target="_blank" rel="noopener noreferrer">{src}</a></p>
       </div>
 
       <div className="player-controls">
@@ -165,7 +172,13 @@ const WebMPlayer: React.FC<WebMPlayerProps> = ({ src, streamId }) => {
         
         <button 
           className={`start-stream-button ${isPlaying ? 'playing' : ''}`} 
-          onClick={handlePlayPause}
+          onClick={()=> {
+            if (isPlayerSupported) {
+              handlePlayPause(); 
+            } else {
+              window.open(src, '_blank');
+            }
+          }}
         >
           {isPlaying ? 'Pause' : 'Play'}
         </button>

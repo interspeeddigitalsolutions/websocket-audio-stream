@@ -1,3 +1,9 @@
+.src {
+  color: black;
+  font-size: 0.9rem;
+  text-decoration: underline;
+}
+
 .hls-player {
   display: flex;
   flex-direction: column;
