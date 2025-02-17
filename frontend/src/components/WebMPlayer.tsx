@@ -17,32 +17,78 @@ const WebMPlayer: React.FC<WebMPlayerProps> = ({ src, streamId }) => {
   useEffect(() => {
     if (!src || !audioRef.current) return;
 
-    // Create a MediaSource object
-    const mediaSource = new MediaSource();
-    audioRef.current.src = URL.createObjectURL(mediaSource);
-
-    mediaSource.addEventListener('sourceopen', async () => {
+    const loadAudio = async () => {
       try {
-        // Fetch the WebM file
-        const response = await fetch(src);
-        const arrayBuffer = await response.arrayBuffer();
-
-        // Create a source buffer and append the WebM data
-        const sourceBuffer = mediaSource.addSourceBuffer('audio/webm; codecs=opus');
-        sourceBuffer.addEventListener('updateend', () => {
-          if (!sourceBuffer.updating && mediaSource.readyState === 'open') {
-            mediaSource.endOfStream();
-            if (isPlaying && audioRef.current) {
-              audioRef.current.play().catch(e => console.error('Error playing:', e));
-            }
-          }
-        });
-
-        sourceBuffer.appendBuffer(arrayBuffer);
+        // First try direct playback
+        audioRef.current!.src = src;
+        await audioRef.current!.load();
+        // Test if playback works
+        const playTest = audioRef.current!.play();
+        await playTest;
+        // If we get here, playback works - pause it
+        audioRef.current!.pause();
       } catch (error) {
-        console.error('Error loading WebM:', error);
+        console.log('Direct playback failed:', error);
+        // Reset the src since direct playback failed
+        if (audioRef.current) audioRef.current.src = '';
+
+        try {
+          // Fall back to MediaSource approach
+          const mediaSource = new MediaSource();
+          audioRef.current!.src = URL.createObjectURL(mediaSource);
+
+          await new Promise((resolve, reject) => {
+            mediaSource.addEventListener('sourceopen', async () => {
+              try {
+                const response = await fetch(src);
+                const arrayBuffer = await response.arrayBuffer();
+
+                // Try different MIME types
+                const mimeTypes = [
+                  'audio/webm; codecs=opus',
+                  'audio/mp4',
+                  'audio/mpeg',
+                  'audio/aac'
+                ];
+
+                let sourceBuffer = null;
+                for (const mimeType of mimeTypes) {
+                  if (MediaSource.isTypeSupported(mimeType)) {
+                    try {
+                      sourceBuffer = mediaSource.addSourceBuffer(mimeType);
+                      break;
+                    } catch (e) {
+                      console.log(`Failed to add source buffer for ${mimeType}:`, e);
+                    }
+                  }
+                }
+
+                if (!sourceBuffer) {
+                  throw new Error('No supported source buffer type found');
+                }
+
+                sourceBuffer.addEventListener('updateend', () => {
+                  if (!sourceBuffer!.updating && mediaSource.readyState === 'open') {
+                    mediaSource.endOfStream();
+                    resolve(true);
+                  }
+                });
+
+                sourceBuffer.appendBuffer(arrayBuffer);
+              } catch (e) {
+                reject(e);
+              }
+            });
+          });
+        } catch (msError) {
+          console.error('MediaSource approach failed:', msError);
+          // If both approaches fail, show a user-friendly error
+          alert('This audio format is not supported in your browser. Please try using a different browser.');
+        }
       }
-    });
+    };
+
+    loadAudio();
 
     return () => {
       if (audioRef.current) {
@@ -50,7 +96,7 @@ const WebMPlayer: React.FC<WebMPlayerProps> = ({ src, streamId }) => {
         audioRef.current.src = '';
       }
     };
-  }, [src, isPlaying]);
+  }, [src]);
 
   const handlePlayPause = async () => {
     if (audioRef.current) {
@@ -112,8 +158,8 @@ const WebMPlayer: React.FC<WebMPlayerProps> = ({ src, streamId }) => {
           ref={audioRef} 
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
-          // onTimeUpdate={handleTimeUpdate}
-          // onLoadedMetadata={handleTimeUpdate}
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={handleTimeUpdate}
           onError={(e) => console.error('Audio error:', (e.target as HTMLAudioElement).error)}
         />
         
