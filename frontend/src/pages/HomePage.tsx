@@ -5,6 +5,7 @@ import './HomePage.css';
 import podcastImage from '../assets/podcast.png';
 
 export default function Home() {
+    const apiBase = process.env.VITE_BACKEND_URL;
     const navigate = useNavigate();
     const [streamId, setStreamId] = useState('');
     const [playerUrl, setPlayerUrl] = useState('');
@@ -19,7 +20,7 @@ export default function Home() {
 
     const handleGenerateStreamId = async () => {
         try {
-            const response = await axios.get('http://localhost:8083/api/generate-stream-id');
+            const response = await axios.get(`${apiBase}/api/generate-stream-id`);
             const { streamId, playerUrl } = response.data;
             setStreamId(streamId);
             setPlayerUrl(playerUrl);
