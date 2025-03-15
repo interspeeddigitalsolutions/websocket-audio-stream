@@ -20,6 +20,11 @@ export default function RecordPage() {
                         onError={handleError}
                     />
                 )}
+
+                {/* back to home link */}
+                <div className="back-to-home">
+                    <a href="/">Back to Home</a>
+                </div>
             </div>
         </div>
     );

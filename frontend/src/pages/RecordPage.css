@@ -1,12 +1,17 @@
 .record-page {
-    padding: 2rem;
+    /* padding: 2rem; */
   }
   
   .record-container {
     max-width: 1200px;
     margin: 0 auto;
     display: flex;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
-    align-items: flex-start;
+  }
+
+  .back-to-home {
+    margin-top: 1rem;
   }
   
