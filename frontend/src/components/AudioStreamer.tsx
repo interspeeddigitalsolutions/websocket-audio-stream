@@ -4,10 +4,11 @@ import podcastImage from '../assets/podcast.png';
 
 interface AudioStreamerProps {
   wsUrl: string;
+  streamId: string;
   onError?: (error: Error) => void;
 }
 
-const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
+const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, streamId, onError }) => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [shouldRecord, setShouldRecord] = useState(false);
   const [playerUrl, setPlayerUrl] = useState<string>('');
@@ -94,17 +95,12 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
 
       websocketRef.current.onopen = () => {
         console.log(shouldRecord)
-        // Send recording preference
+        // Send recording preference as JSON message
         websocketRef.current?.send(JSON.stringify({
           type: 'recording-preference',
-          shouldRecord
+          shouldRecord,
+          streamId
         }));
-
-        // const mediaRecorder = new MediaRecorder(stream, {
-        //   mimeType: 'audio/webm;codecs=opus',
-        //   // mimeType: 'audio/mp4',
-        //   audioBitsPerSecond: 128000
-        // });
 
         function getMediaRecorderOptions() {
           const types = [
@@ -133,6 +129,7 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
 
         mediaRecorder.ondataavailable = (event: BlobEvent) => {
           if (event.data.size > 0 && websocketRef.current?.readyState === WebSocket.OPEN) {
+            // Send binary audio data directly without any JSON wrapping
             websocketRef.current.send(event.data);
           }
         };
@@ -144,12 +141,17 @@ const AudioStreamer: React.FC<AudioStreamerProps> = ({ wsUrl, onError }) => {
 
       websocketRef.current.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data);
-          if (data.type === 'stream-created' && data.playerUrl) {
-            setPlayerUrl(data.playerUrl);
-            if (data.recordingPlayerUrl) {
-              setRecordingPlayerUrl(data.recordingPlayerUrl);
+          if (typeof event.data === 'string') {
+            const data = JSON.parse(event.data);
+            if (data.type === 'stream-created' && data.playerUrl) {
+              setPlayerUrl(data.playerUrl);
+              if (data.recordingPlayerUrl) {
+                setRecordingPlayerUrl(data.recordingPlayerUrl);
+              }
             }
+          } else {
+            // Handle binary audio data
+            console.log('Received binary audio data:', event.data);
           }
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error);

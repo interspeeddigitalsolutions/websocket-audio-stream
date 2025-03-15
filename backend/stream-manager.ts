@@ -17,8 +17,8 @@ export class StreamManager {
     this.activeStreams = new Map();
   }
 
-  createStream(clientId: string, shouldRecord: boolean = false): StreamMetadata {
-    const streamId = `stream-${Date.now()}`;
+  createStream(clientId: string, shouldRecord: boolean = false, streamId: string): StreamMetadata {
+    // const streamId = `stream-${Date.now()}`;
     const HLS_FOLDER = path.join(__dirname, "..", "hls");
     const RECORDINGS_FOLDER = path.join(__dirname, "..", "recordings");
 

@@ -1,17 +1,10 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import AudioStreamer from './components/AudioStreamer';
 import PlayerPage from './pages/PlayerPage';
 import './App.css';
+import HomePage from './pages/HomePage';
+import RecordPage from './pages/RecordPage';
 
 function App() {
-  const handleError = (error: Error) => {
-    console.error('Streaming error:', error);
-  };
-
-  const websocketUrl = import.meta.env.VITE_WEB_SOCKET_URL;
-  console.log("websocketUrl: ", websocketUrl);
-
   return (
     <Router>
       <div className="app-container">
@@ -20,12 +13,13 @@ function App() {
         </header>
         <main className="app-main">
           <Routes>
-            <Route path="/" element={
-              <AudioStreamer 
-                wsUrl={websocketUrl || "ws://localhost:8083"} 
-                onError={handleError}
-              />
-            } />
+            {/* Home */}
+            <Route path="/" element={<HomePage />} />
+
+            {/* Audio Streamer */}
+            <Route path="/record/:streamId" element={<RecordPage />} />
+
+            {/* Player */}
             <Route path="/player/:streamId" element={<PlayerPage />} />
           </Routes>
         </main>
