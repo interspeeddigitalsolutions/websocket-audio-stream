@@ -5,7 +5,7 @@ import './HomePage.css';
 import podcastImage from '../assets/podcast.png';
 
 export default function Home() {
-    const apiBase = process.env.VITE_BACKEND_URL;
+    const apiBase = import.meta.env.VITE_BACKEND_URL;
     const navigate = useNavigate();
     const [streamId, setStreamId] = useState('');
     const [playerUrl, setPlayerUrl] = useState('');
